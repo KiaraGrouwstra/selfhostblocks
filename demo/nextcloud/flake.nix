@@ -42,13 +42,17 @@
             # This option is only needed because we do not access Nextcloud at the default port in the VM.
             port = 8080;
 
-            adminPass.result = config.shb.sops.secret."nextcloud/adminpass".result;
-
             apps = {
               previewgenerator.enable = true;
             };
           };
-          shb.sops.secret."nextcloud/adminpass".request = config.shb.nextcloud.adminPass.request;
+
+          # Route all `fileSecrets` contract requests through the sops provider.
+          contracts.fileSecrets.defaultProvider = config.contracts.fileSecrets.providers.sops;
+          # `settings.key` points the secret at its key in secrets.yaml, since the
+          # contract names the sops secret by its joined `want` path
+          # (`nextcloud_adminPass`), which differs from the yaml key.
+          shb.sops.secret.nextcloud.adminPass.settings.key = "nextcloud/adminpass";
 
           # Set to true for more debug info with `journalctl -f -u nginx`.
           shb.nginx.accessLog = true;
@@ -65,11 +69,7 @@
             ldapPort = 3890;
             webUIListenPort = 17170;
             dcdomain = "dc=example,dc=com";
-            ldapUserPassword.result = config.shb.sops.secret."lldap/user_password".result;
-            jwtSecret.result = config.shb.sops.secret."lldap/jwt_secret".result;
           };
-          shb.sops.secret."lldap/user_password".request = config.shb.lldap.ldapUserPassword.request;
-          shb.sops.secret."lldap/jwt_secret".request = config.shb.lldap.jwtSecret.request;
 
           shb.nextcloud.apps.ldap = {
             enable = true;
@@ -77,13 +77,16 @@
             port = config.shb.lldap.ldapPort;
             dcdomain = config.shb.lldap.dcdomain;
             adminName = "admin";
-            adminPassword.result = config.shb.sops.secret."nextcloud/ldap_admin_password".result;
             userGroup = "nextcloud_user";
           };
-          shb.sops.secret."nextcloud/ldap_admin_password" = {
-            request = config.shb.nextcloud.apps.ldap.adminPassword.request;
-            settings.key = "lldap/user_password";
-          };
+
+          # Each `fileSecrets` request flows to the sops provider via the bus
+          # (see `basic`'s `defaultProvider`). Only the yaml key needs setting,
+          # since the contract names each sops secret by its joined `want` path
+          # (`<consumer>_<secret>`) which differs from the key in `secrets.yaml`.
+          shb.sops.secret.lldap.ldapUserPassword.settings.key = "lldap/user_password";
+          shb.sops.secret.lldap.jwtSecret.settings.key = "lldap/jwt_secret";
+          shb.sops.secret.nextcloud.ldapAdminPassword.settings.key = "lldap/user_password";
         };
 
       sso =
@@ -130,44 +133,29 @@
             ldapPort = config.shb.lldap.ldapPort;
             ldapHostname = "127.0.0.1";
             dcdomain = config.shb.lldap.dcdomain;
-
-            secrets = {
-              jwtSecret.result = config.shb.sops.secret."authelia/jwt_secret".result;
-              ldapAdminPassword.result = config.shb.sops.secret."authelia/ldap_admin_password".result;
-              sessionSecret.result = config.shb.sops.secret."authelia/session_secret".result;
-              storageEncryptionKey.result = config.shb.sops.secret."authelia/storage_encryption_key".result;
-              identityProvidersOIDCHMACSecret.result = config.shb.sops.secret."authelia/hmac_secret".result;
-              identityProvidersOIDCIssuerPrivateKey.result = config.shb.sops.secret."authelia/private_key".result;
-            };
           };
-          shb.sops.secret."authelia/jwt_secret".request = config.shb.authelia.secrets.jwtSecret.request;
-          shb.sops.secret."authelia/ldap_admin_password" = {
-            request = config.shb.authelia.secrets.ldapAdminPassword.request;
-            settings.key = "lldap/user_password";
-          };
-          shb.sops.secret."authelia/session_secret".request =
-            config.shb.authelia.secrets.sessionSecret.request;
-          shb.sops.secret."authelia/storage_encryption_key".request =
-            config.shb.authelia.secrets.storageEncryptionKey.request;
-          shb.sops.secret."authelia/hmac_secret".request =
-            config.shb.authelia.secrets.identityProvidersOIDCHMACSecret.request;
-          shb.sops.secret."authelia/private_key".request =
-            config.shb.authelia.secrets.identityProvidersOIDCIssuerPrivateKey.request;
 
           shb.nextcloud.apps.sso = {
             enable = true;
             endpoint = "https://${config.shb.authelia.subdomain}.${config.shb.authelia.domain}";
             clientID = "nextcloud";
             fallbackDefaultAuth = true;
+          };
 
-            secret.result = config.shb.sops.secret."nextcloud/sso/secret".result;
-            secretForAuthelia.result = config.shb.sops.secret."authelia/nextcloud_sso_secret".result;
+          # As in `ldap`: requests flow through the bus, so only the yaml keys
+          # (which differ from the joined `want` paths) need pointing here.
+          # `authelia.ldapAdminPassword` reuses the lldap user password, and
+          # `nextcloud.ssoSecretForAuthelia` reuses the nextcloud SSO secret.
+          shb.sops.secret.authelia = {
+            jwtSecret.settings.key = "authelia/jwt_secret";
+            ldapAdminPassword.settings.key = "lldap/user_password";
+            sessionSecret.settings.key = "authelia/session_secret";
+            storageEncryptionKey.settings.key = "authelia/storage_encryption_key";
+            identityProvidersOIDCHMACSecret.settings.key = "authelia/hmac_secret";
+            identityProvidersOIDCIssuerPrivateKey.settings.key = "authelia/private_key";
           };
-          shb.sops.secret."nextcloud/sso/secret".request = config.shb.nextcloud.apps.sso.secret.request;
-          shb.sops.secret."authelia/nextcloud_sso_secret" = {
-            request = config.shb.nextcloud.apps.sso.secretForAuthelia.request;
-            settings.key = "nextcloud/sso/secret";
-          };
+          shb.sops.secret.nextcloud.ssoSecret.settings.key = "nextcloud/sso/secret";
+          shb.sops.secret.nextcloud.ssoSecretForAuthelia.settings.key = "nextcloud/sso/secret";
         };
 
       sopsConfig = {

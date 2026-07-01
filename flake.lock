@@ -35,16 +35,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1781074563,
-        "narHash": "sha256-md8WlXOlfnIeHeOScMTTHFyf2d6iaTwPl2apR5EQ3P4=",
-        "owner": "nixos",
+        "lastModified": 1783192871,
+        "narHash": "sha256-j4uyDwPsEGlwf8O9wr9o/vIdaLQn4Njz/fCFJYs8JGQ=",
+        "owner": "KiaraGrouwstra",
         "repo": "nixpkgs",
-        "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+        "rev": "3e8c8eb717c9b5d80ed600d8a3e18bb9b63ccca0",
         "type": "github"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixos-unstable",
+        "owner": "KiaraGrouwstra",
+        "ref": "contracts-new-types-20260704",
         "repo": "nixpkgs",
         "type": "github"
       }

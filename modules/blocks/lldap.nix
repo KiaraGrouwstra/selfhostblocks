@@ -13,6 +13,8 @@ let
 
   inherit (lib) mkOption types;
 
+  inherit (lib.contract.forModule config) fileSecrets;
+
   ensureFormat = pkgs.formats.json { };
 
   ensureFieldsOptions = name: {
@@ -100,26 +102,30 @@ in
 
     ldapUserPassword = lib.mkOption {
       description = "LDAP admin user secret. Must be >= 8 characters.";
-      type = lib.types.submodule {
-        options = shb.contracts.secret.mkRequester {
-          mode = "0440";
-          owner = "lldap";
-          group = "lldap";
-          restartUnits = [ "lldap.service" ];
+      type = fileSecrets.mkContract {
+        request = {
+          mode.default = "0440";
+          owner.default = "lldap";
+          group.default = "lldap";
+          restartUnits.default = [ "lldap.service" ];
         };
       };
+      default.result = config.contracts.fileSecrets.results.lldap.ldapUserPassword;
+      defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.lldap.ldapUserPassword; }";
     };
 
     jwtSecret = lib.mkOption {
       description = "JWT secret.";
-      type = lib.types.submodule {
-        options = shb.contracts.secret.mkRequester {
-          mode = "0440";
-          owner = "lldap";
-          group = "lldap";
-          restartUnits = [ "lldap.service" ];
+      type = fileSecrets.mkContract {
+        request = {
+          mode.default = "0440";
+          owner.default = "lldap";
+          group.default = "lldap";
+          restartUnits.default = [ "lldap.service" ];
         };
       };
+      default.result = config.contracts.fileSecrets.results.lldap.jwtSecret;
+      defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.lldap.jwtSecret; }";
     };
 
     restrictAccessIPRange = lib.mkOption {
@@ -350,6 +356,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+
+    contracts.fileSecrets.want.lldap.ldapUserPassword.request = cfg.ldapUserPassword.request;
+    contracts.fileSecrets.want.lldap.jwtSecret.request = cfg.jwtSecret.request;
 
     services.nginx = {
       enable = true;

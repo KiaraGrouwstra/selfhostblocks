@@ -9,6 +9,8 @@
 let
   cfg = config.shb.nextcloud;
 
+  inherit (lib.contract.forModule config) fileSecrets;
+
   fqdn = "${cfg.subdomain}.${cfg.domain}";
   fqdnWithPort = if isNull cfg.port then fqdn else "${fqdn}:${toString cfg.port}";
   protocol = if !(isNull cfg.ssl) then "https" else "http";
@@ -122,14 +124,22 @@ in
     };
 
     adminPass = lib.mkOption {
-      description = "Nextcloud admin password.";
-      type = lib.types.submodule {
-        options = shb.contracts.secret.mkRequester {
-          mode = "0400";
-          owner = "nextcloud";
-          restartUnits = [ "phpfpm-nextcloud.service" ];
+      description = ''
+        Nextcloud admin password, following the `fileSecrets` contract.
+
+        `restartUnits` includes `phpfpm-nextcloud.service` so the service
+        picks up password changes when the secret is re-provisioned.
+      '';
+      type = fileSecrets.mkContract {
+        request = {
+          owner.default = "nextcloud";
+          group.default = "nextcloud";
+          mode.default = "0400";
+          restartUnits.default = [ "phpfpm-nextcloud.service" ];
         };
       };
+      default.result = config.contracts.fileSecrets.results.nextcloud.adminPass;
+      defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.nextcloud.adminPass; }";
     };
 
     maxUploadSize = lib.mkOption {
@@ -437,13 +447,15 @@ in
 
                   adminPassword = lib.mkOption {
                     description = "LDAP server admin password.";
-                    type = lib.types.submodule {
-                      options = shb.contracts.secret.mkRequester {
-                        mode = "0400";
-                        owner = "nextcloud";
-                        restartUnits = [ "phpfpm-nextcloud.service" ];
+                    type = fileSecrets.mkContract {
+                      request = {
+                        mode.default = "0400";
+                        owner.default = "nextcloud";
+                        restartUnits.default = [ "phpfpm-nextcloud.service" ];
                       };
                     };
+                    default.result = config.contracts.fileSecrets.results.nextcloud.ldapAdminPassword;
+                    defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.nextcloud.ldapAdminPassword; }";
                   };
 
                   userGroup = lib.mkOption {
@@ -520,23 +532,27 @@ in
 
                 secret = lib.mkOption {
                   description = "OIDC shared secret.";
-                  type = lib.types.submodule {
-                    options = shb.contracts.secret.mkRequester {
-                      mode = "0400";
-                      owner = "nextcloud";
-                      restartUnits = [ "phpfpm-nextcloud.service" ];
+                  type = fileSecrets.mkContract {
+                    request = {
+                      mode.default = "0400";
+                      owner.default = "nextcloud";
+                      restartUnits.default = [ "phpfpm-nextcloud.service" ];
                     };
                   };
+                  default.result = config.contracts.fileSecrets.results.nextcloud.ssoSecret;
+                  defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.nextcloud.ssoSecret; }";
                 };
 
                 secretForAuthelia = lib.mkOption {
                   description = "OIDC shared secret. Content must be the same as `secretFile` option.";
-                  type = lib.types.submodule {
-                    options = shb.contracts.secret.mkRequester {
-                      mode = "0400";
-                      owner = "authelia";
+                  type = fileSecrets.mkContract {
+                    request = {
+                      mode.default = "0400";
+                      owner.default = "authelia";
                     };
                   };
+                  default.result = config.contracts.fileSecrets.results.nextcloud.ssoSecretForAuthelia;
+                  defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.nextcloud.ssoSecretForAuthelia; }";
                 };
 
                 fallbackDefaultAuth = lib.mkOption {
@@ -726,6 +742,8 @@ in
 
   config = lib.mkMerge [
     (lib.mkIf cfg.enable {
+      contracts.fileSecrets.want.nextcloud.adminPass.request = cfg.adminPass.request;
+
       users.users = {
         nextcloud = {
           name = "nextcloud";
@@ -1050,6 +1068,9 @@ in
     })
 
     (lib.mkIf (cfg.enable && cfg.apps.ldap.enable) {
+      contracts.fileSecrets.want.nextcloud.ldapAdminPassword.request =
+        cfg.apps.ldap.adminPassword.request;
+
       systemd.services.nextcloud-setup.path = [ pkgs.jq ];
       systemd.services.nextcloud-setup.script =
         let
@@ -1135,6 +1156,10 @@ in
         ];
       in
       lib.mkIf (cfg.enable && cfg.apps.sso.enable) {
+        contracts.fileSecrets.want.nextcloud.ssoSecret.request = cfg.apps.sso.secret.request;
+        contracts.fileSecrets.want.nextcloud.ssoSecretForAuthelia.request =
+          cfg.apps.sso.secretForAuthelia.request;
+
         assertions = [
           {
             assertion = cfg.ssl != null;

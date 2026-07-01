@@ -11,6 +11,8 @@ let
   cfg = config.shb.authelia;
   opt = options.shb.authelia;
 
+  inherit (lib.contract.forModule config) fileSecrets;
+
   fqdn = "${cfg.subdomain}.${cfg.domain}";
   fqdnWithPort = if isNull cfg.port then fqdn else "${fqdn}:${toString cfg.port}";
 
@@ -85,53 +87,63 @@ in
         options = {
           jwtSecret = lib.mkOption {
             description = "JWT secret.";
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result = config.contracts.fileSecrets.results.authelia.jwtSecret;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.jwtSecret; }";
           };
           ldapAdminPassword = lib.mkOption {
             description = "LDAP admin user password.";
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result = config.contracts.fileSecrets.results.authelia.ldapAdminPassword;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.ldapAdminPassword; }";
           };
           sessionSecret = lib.mkOption {
             description = "Session secret.";
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result = config.contracts.fileSecrets.results.authelia.sessionSecret;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.sessionSecret; }";
           };
           storageEncryptionKey = lib.mkOption {
             description = "Storage encryption key. Must be >= 20 characters.";
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result = config.contracts.fileSecrets.results.authelia.storageEncryptionKey;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.storageEncryptionKey; }";
           };
           identityProvidersOIDCHMACSecret = lib.mkOption {
             description = "Identity provider OIDC HMAC secret. Must be >= 40 characters.";
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result = config.contracts.fileSecrets.results.authelia.identityProvidersOIDCHMACSecret;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.identityProvidersOIDCHMACSecret; }";
           };
           identityProvidersOIDCIssuerPrivateKey = lib.mkOption {
             description = ''
@@ -139,13 +151,16 @@ in
 
               Generate one with `nix run nixpkgs#openssl -- genrsa -out keypair.pem 2048`
             '';
-            type = lib.types.submodule {
-              options = shb.contracts.secret.mkRequester {
-                mode = "0400";
-                owner = cfg.autheliaUser;
-                restartUnits = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
+            type = fileSecrets.mkContract {
+              request = {
+                mode.default = "0400";
+                owner.default = cfg.autheliaUser;
+                restartUnits.default = [ "authelia-${opt.subdomain}.${opt.domain}.service" ];
               };
             };
+            default.result =
+              config.contracts.fileSecrets.results.authelia.identityProvidersOIDCIssuerPrivateKey;
+            defaultText = lib.literalExpression "{ result = config.contracts.fileSecrets.results.authelia.identityProvidersOIDCIssuerPrivateKey; }";
           };
         };
       };
@@ -407,6 +422,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    contracts.fileSecrets.want.authelia.jwtSecret.request = cfg.secrets.jwtSecret.request;
+    contracts.fileSecrets.want.authelia.ldapAdminPassword.request =
+      cfg.secrets.ldapAdminPassword.request;
+    contracts.fileSecrets.want.authelia.sessionSecret.request = cfg.secrets.sessionSecret.request;
+    contracts.fileSecrets.want.authelia.storageEncryptionKey.request =
+      cfg.secrets.storageEncryptionKey.request;
+    contracts.fileSecrets.want.authelia.identityProvidersOIDCHMACSecret.request =
+      cfg.secrets.identityProvidersOIDCHMACSecret.request;
+    contracts.fileSecrets.want.authelia.identityProvidersOIDCIssuerPrivateKey.request =
+      cfg.secrets.identityProvidersOIDCIssuerPrivateKey.request;
+
     assertions = [
       {
         assertion = builtins.length cfg.oidcClients > 0;

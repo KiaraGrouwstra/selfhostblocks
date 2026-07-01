@@ -2,7 +2,7 @@
   description = "SelfHostBlocks module";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:KiaraGrouwstra/nixpkgs/contracts-new-types-20260704";
     nix-flake-tests.url = "github:antifuchs/nix-flake-tests";
     flake-utils.url = "github:numtide/flake-utils";
     nmdsrc = {
